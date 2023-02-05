@@ -1,0 +1,53 @@
+name: Rust
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1.0.6
+        with:
+          toolchain: nightly
+          components: llvm-tools-preview
+          target: thumbv6m-none-eabi
+      - name: cache
+        id: cache-target
+        uses: actions/cache@v2
+        with:
+          path: target
+          key: ${{ runner.os }}-thumbv6m-none-eabi
+
+      - name: Build
+        run: |
+          cargo install cargo-binutils flip-link
+          cargo build --examples --release --target=thumbv6m-none-eabi
+          cargo objcopy --example cricket --release --target=thumbv6m-none-eabi -- -O binary cricket.bin
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: cricket-bin
+          path: cricket.bin
+
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1.0.6
+        with:
+          toolchain: stable
+          target: thumbv6m-none-eabi
+      - name: Check fmt
+        run: |
+          rustup component add rustfmt --toolchain nightly-x86_64-unknown-linux-gnu
+          find -name '*.rs' | xargs rustfmt --check --edition 2018
+
+
